@@ -3,6 +3,7 @@
 ## Installation
 
 ```bash
+$> go get golang.org/x/net/html
 $> cd prsr && go build
 ```
 
