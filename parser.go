@@ -3,45 +3,62 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
 )
 
-type Link struct {
-	URI   string
-	Data  io.ReadCloser
-	Level int
-}
+var conf *Config
 
-var ch = make(chan *Link, 10)
-
-func main() {
+// init function
+//
+// Parsing arguments using flag
+func init() {
 	uri := flag.String("uri", "https://sheremet.pw/", "URI to parse")
 	tag := flag.String("tag", "input", "Tag name you want to find")
+	deep := flag.Int("d", 3, "Parser page level deep")
+	maxSize := flag.Int("l", 50, "Max size of parsed links")
+
 	flag.Parse()
 
-	w := NewWorker(*tag)
-	baseLink := &Link{URI: *uri}
+	conf = &Config{
+		BaseURI: *uri,
+		TagName: *tag,
+		MaxDeep: *deep,
+		MaxLink: *maxSize,
+	}
+}
+
+// main function
+func main() {
+	worker := NewWorker(conf)
+
+	parse(worker)
+}
+
+// parse function
+//
+// Start to parsing baseLink
+//
+// Params:
+// - w {*Worker}
+func parse(w *Worker) {
+	baseLink := &Link{URI: conf.BaseURI}
 
 	w.wg.Add(1)
 	go w.Start(baseLink)
 
 	go func() {
-		for item := range ch {
-			if item.Level < 3 && !w.Seen[item.URI] {
+		for item := range w.Channel {
+			if item.Level < w.Conf.MaxDeep && !w.Seen.Exist(item.URI) {
 				w.wg.Add(1)
 				go w.Start(item)
-			}
-
-			if len(w.Results) >= 50 || len(w.Seen) >= 50 {
-				break
 			}
 		}
 	}()
 
 	w.wg.Wait()
-	fmt.Println("LINKS PARSED: ", len(w.Results))
 
-	for k, v := range w.Results {
-		fmt.Println("URI: ", k, "has", v, w.Element)
+	for k, v := range w.Results.data {
+		fmt.Println("URI: ", k, "has", v, w.Conf.TagName)
 	}
+
+	fmt.Println("\nLINKS PARSED: ", len(w.Results.data))
 }
