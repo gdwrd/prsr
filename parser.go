@@ -56,6 +56,8 @@ func parse(w *Worker) {
 
 	w.wg.Wait()
 
+	fmt.Printf("\n")
+
 	for k, v := range w.Results.data {
 		fmt.Println("URI: ", k, "has", v, w.Conf.TagName)
 	}
